@@ -246,9 +246,13 @@ GEMINI_TIMEOUT_SECONDS=30
 OLLAMA_BASE_URL=http://host.docker.internal:11434   # Ollama running on your host machine
 OLLAMA_TIMEOUT_SECONDS=120
 OLLAMA_DEFAULT_MODEL=                                # empty = auto-discover best installed model
+
+# Embedding configuration for Document Indexing (RAG)
+EMBEDDING_PROVIDER=openai                            # options: openai, gemini, ollama
+OLLAMA_EMBEDDING_MODEL=nomic-embed-text              # required if EMBEDDING_PROVIDER=ollama
 ```
 
-> **Note:** `OPENAI_API_KEY` is still used, but only for generating embeddings during document indexing (RAG retrieval). It is no longer used for chat answer generation — that responsibility now belongs to Ollama/Gemini.
+> **Note:** Document embeddings for RAG document indexing are now fully configurable! By setting `EMBEDDING_PROVIDER=ollama`, you can run the entire platform **100% offline**, utilizing local models for both chat generation and vector embeddings.
 
 ### Usage examples
 
