@@ -1,0 +1,33 @@
+{
+  "symptoms_guide": [
+    {"symptom": "chest_pain", "urgency": "emergency", "possible_causes": ["MI", "angina", "aortic dissection", "pulmonary embolism", "pericarditis", "GERD", "costochondritis"], "action": "Call 911 immediately if sudden, severe, or with sweating/arm pain"},
+    {"symptom": "shortness_of_breath", "urgency": "emergency", "possible_causes": ["asthma", "COPD", "heart failure", "pulmonary embolism", "pneumonia", "anaphylaxis"], "action": "Seek immediate medical attention if severe or sudden"},
+    {"symptom": "fever", "urgency": "monitor", "possible_causes": ["viral infection", "bacterial infection", "malaria", "dengue", "COVID-19", "UTI"], "action": "Seek care if >103°F/39.4°C, >3 days, or with stiff neck/rash"},
+    {"symptom": "severe_headache", "urgency": "urgent", "possible_causes": ["migraine", "tension headache", "hypertensive crisis", "subarachnoid hemorrhage", "meningitis"], "action": "Emergency if thunderclap onset or worst headache of life"},
+    {"symptom": "altered_consciousness", "urgency": "emergency", "possible_causes": ["stroke", "hypoglycemia", "hypoxia", "drug overdose", "seizure", "head injury"], "action": "Call 911 immediately"},
+    {"symptom": "severe_abdominal_pain", "urgency": "urgent", "possible_causes": ["appendicitis", "ectopic pregnancy", "bowel obstruction", "pancreatitis", "aortic aneurysm"], "action": "Seek immediate evaluation, especially if board-like rigidity"},
+    {"symptom": "coughing_blood", "urgency": "urgent", "possible_causes": ["tuberculosis", "lung cancer", "pulmonary embolism", "bronchiectasis", "severe bronchitis"], "action": "Seek medical care within 24 hours or emergency if massive"},
+    {"symptom": "sudden_vision_loss", "urgency": "emergency", "possible_causes": ["retinal artery occlusion", "stroke", "retinal detachment", "glaucoma", "temporal arteritis"], "action": "Emergency - time-sensitive, call 911 or go to ER"},
+    {"symptom": "palpitations", "urgency": "monitor", "possible_causes": ["atrial fibrillation", "SVT", "anxiety", "hyperthyroidism", "caffeine", "anemia"], "action": "Seek care if with chest pain, syncope, or persistent"},
+    {"symptom": "weight_loss_unexplained", "urgency": "scheduled", "possible_causes": ["cancer", "diabetes", "hyperthyroidism", "tuberculosis", "depression", "malabsorption"], "action": "Schedule appointment if >5% body weight in 6 months"}
+  ],
+  "medications": [
+    {"name": "Metformin", "class": "Biguanide", "use": "Type 2 diabetes", "mechanism": "Decreases hepatic glucose production", "common_doses": "500-2000mg daily", "contraindications": ["CKD eGFR<30", "contrast dye procedure", "liver failure"], "side_effects": ["GI upset", "lactic acidosis (rare)", "B12 deficiency"]},
+    {"name": "Lisinopril", "class": "ACE Inhibitor", "use": "Hypertension, Heart failure, CKD", "mechanism": "Blocks angiotensin-converting enzyme", "common_doses": "5-40mg daily", "contraindications": ["pregnancy", "bilateral renal artery stenosis", "angioedema history"], "side_effects": ["dry cough", "hyperkalemia", "angioedema"]},
+    {"name": "Atorvastatin", "class": "Statin (HMG-CoA reductase inhibitor)", "use": "Hypercholesterolemia, CVD prevention", "mechanism": "Inhibits cholesterol synthesis", "common_doses": "10-80mg daily", "contraindications": ["pregnancy", "active liver disease"], "side_effects": ["myalgia", "myopathy", "elevated LFTs", "rhabdomyolysis (rare)"]},
+    {"name": "Salbutamol (Albuterol)", "class": "Short-acting beta2-agonist (SABA)", "use": "Asthma, COPD acute relief", "mechanism": "Beta2 receptor agonist - bronchodilation", "common_doses": "2.5mg nebulized or 100mcg 2 puffs inhaler PRN", "side_effects": ["tachycardia", "tremor", "hypokalemia at high doses"]},
+    {"name": "Amlodipine", "class": "Calcium Channel Blocker (dihydropyridine)", "use": "Hypertension, Angina", "mechanism": "Blocks L-type calcium channels in vascular smooth muscle", "common_doses": "5-10mg daily", "side_effects": ["peripheral edema", "flushing", "headache"]},
+    {"name": "Amoxicillin", "class": "Aminopenicillin antibiotic", "use": "Bacterial infections (strep throat, pneumonia, UTI, H. pylori)", "mechanism": "Inhibits bacterial cell wall synthesis", "common_doses": "250-500mg TID or 875mg BID", "contraindications": ["penicillin allergy"], "side_effects": ["GI upset", "diarrhea", "allergic reaction", "C. diff (rare)"]},
+    {"name": "Insulin Glargine", "class": "Long-acting basal insulin", "use": "Type 1 and Type 2 diabetes", "mechanism": "Glucose uptake, suppresses hepatic glucose production", "common_doses": "Once daily SC injection, dose individualized", "side_effects": ["hypoglycemia", "weight gain", "lipodystrophy at injection site"]},
+    {"name": "Aspirin", "class": "Antiplatelet / NSAID", "use": "CVD prevention, acute MI, pain/fever (low doses)", "mechanism": "Irreversibly inhibits COX-1 and COX-2", "common_doses": "81mg daily (prophylaxis), 325mg (acute cardiac event)", "contraindications": ["active peptic ulcer", "bleeding disorders", "children with viral illness (Reye's)"], "side_effects": ["GI bleed", "tinnitus (overdose)", "bronchospasm in aspirin-sensitive asthma"]}
+  ],
+  "lab_values": {
+    "blood_glucose": {"fasting_normal": "70-99 mg/dL", "prediabetes": "100-125 mg/dL", "diabetes": ">=126 mg/dL", "hypoglycemia": "<70 mg/dL", "critical_low": "<40 mg/dL", "critical_high": ">500 mg/dL"},
+    "HbA1c": {"normal": "<5.7%", "prediabetes": "5.7-6.4%", "diabetes": ">=6.5%", "target_diabetes": "<7.0%"},
+    "blood_pressure": {"normal": "<120/80", "elevated": "120-129/<80", "stage1_htn": "130-139/80-89", "stage2_htn": ">=140/90", "hypertensive_crisis": ">=180/120"},
+    "cholesterol": {"total_desirable": "<200 mg/dL", "LDL_optimal": "<100 mg/dL", "LDL_high_risk": "<70 mg/dL", "HDL_low": "<40 mg/dL men, <50 mg/dL women", "triglycerides_normal": "<150 mg/dL"},
+    "complete_blood_count": {"Hb_male_normal": "13.5-17.5 g/dL", "Hb_female_normal": "12.0-15.5 g/dL", "WBC_normal": "4,500-11,000/mcL", "platelets_normal": "150,000-400,000/mcL"},
+    "kidney_function": {"creatinine_male": "0.7-1.3 mg/dL", "creatinine_female": "0.6-1.1 mg/dL", "BUN_normal": "7-25 mg/dL", "eGFR_normal": ">60 mL/min/1.73m2"},
+    "liver_function": {"ALT_normal": "7-56 U/L", "AST_normal": "10-40 U/L", "bilirubin_total": "0.2-1.2 mg/dL", "albumin_normal": "3.5-5.0 g/dL"}
+  }
+}
