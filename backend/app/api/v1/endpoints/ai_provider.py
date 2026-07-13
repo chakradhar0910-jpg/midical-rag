@@ -1,9 +1,11 @@
 """AI provider health check and info endpoints."""
-from fastapi import APIRouter
+
+import logging
+
+from app.core.config import settings
 from app.schemas.schemas import AIProviderHealth
 from app.services.ai.ollama_client import is_ollama_running, list_models
-from app.core.config import settings
-import logging
+from fastapi import APIRouter
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/ai", tags=["AI Provider"])
@@ -39,7 +41,10 @@ async def ai_health() -> AIProviderHealth:
 
     logger.info(
         "[HEALTH] ollama_running=%s  models=%s  gemini_available=%s  default=%s",
-        ollama_up, models, gemini_ok, settings.DEFAULT_AI_PROVIDER,
+        ollama_up,
+        models,
+        gemini_ok,
+        settings.DEFAULT_AI_PROVIDER,
     )
 
     return AIProviderHealth(

@@ -2,26 +2,40 @@
 Ollama local LLM client for MedicalRAG.
 Strict: raises RuntimeError on failure — caller must NOT silently fall back.
 """
+
 import asyncio
 import logging
-import httpx
 from typing import Optional
 
+import httpx
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
-OLLAMA_BASE     = settings.OLLAMA_BASE_URL
+OLLAMA_BASE = settings.OLLAMA_BASE_URL
 OLLAMA_GENERATE = f"{OLLAMA_BASE}/api/generate"
-OLLAMA_TAGS     = f"{OLLAMA_BASE}/api/tags"
-OLLAMA_TIMEOUT  = settings.OLLAMA_TIMEOUT_SECONDS
+OLLAMA_TAGS = f"{OLLAMA_BASE}/api/tags"
+OLLAMA_TIMEOUT = settings.OLLAMA_TIMEOUT_SECONDS
 
 # Priority order: highest-capability models first
 MODEL_PRIORITY = [
-    "llama3", "llama3.2", "llama3.1", "llama3:8b", "llama3:70b",
-    "llama2", "mistral", "mixtral", "gemma2", "gemma",
-    "phi3", "phi", "qwen", "deepseek", "codellama",
-    "vicuna", "orca",
+    "llama3",
+    "llama3.2",
+    "llama3.1",
+    "llama3:8b",
+    "llama3:70b",
+    "llama2",
+    "mistral",
+    "mixtral",
+    "gemma2",
+    "gemma",
+    "phi3",
+    "phi",
+    "qwen",
+    "deepseek",
+    "codellama",
+    "vicuna",
+    "orca",
 ]
 
 
@@ -49,14 +63,15 @@ async def list_models() -> list[str]:
     # Fallback: subprocess `ollama list`
     try:
         proc = await asyncio.create_subprocess_exec(
-            "ollama", "list",
+            "ollama",
+            "list",
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.DEVNULL,
         )
         stdout, _ = await proc.communicate()
         lines = stdout.decode().strip().splitlines()
         models = []
-        for line in lines[1:]:          # skip header
+        for line in lines[1:]:  # skip header
             parts = line.split()
             if parts:
                 models.append(parts[0])
@@ -87,7 +102,7 @@ async def call_ollama(prompt: str, model: Optional[str] = None) -> tuple[str, st
 
     if model is None:
         models = await list_models()
-        model  = select_best_model(models)
+        model = select_best_model(models)
         if not model:
             raise RuntimeError(
                 "No Ollama models installed. Run: ollama pull llama3.2:1b"

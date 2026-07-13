@@ -2,9 +2,10 @@
 Gemini cloud LLM client for MedicalRAG.
 Strict: raises RuntimeError on failure — caller must NOT silently fall back.
 """
-import logging
-import httpx
 
+import logging
+
+import httpx
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -23,14 +24,13 @@ async def call_gemini(prompt: str) -> str:
     """
     if not settings.GEMINI_API_KEY:
         raise RuntimeError(
-            "GEMINI_API_KEY is not configured. "
-            "Set it in backend/.env and restart."
+            "GEMINI_API_KEY is not configured. " "Set it in backend/.env and restart."
         )
 
     model = settings.GEMINI_MODEL
-    url   = GEMINI_ENDPOINT.format(model=model, key=settings.GEMINI_API_KEY)
+    url = GEMINI_ENDPOINT.format(model=model, key=settings.GEMINI_API_KEY)
 
-    safe_url = url.split("?")[0]   # hide API key in logs
+    safe_url = url.split("?")[0]  # hide API key in logs
     logger.info("[INFO] Model name used: %s", model)
     logger.info("[INFO] Endpoint: %s", safe_url)
 
@@ -51,7 +51,7 @@ async def call_gemini(prompt: str) -> str:
                 f"Gemini HTTP {response.status_code}: {response.text[:300]}"
             )
 
-        data       = response.json()
+        data = response.json()
         candidates = data.get("candidates", [])
         if not candidates:
             raise RuntimeError("Gemini returned no candidates")
@@ -69,8 +69,6 @@ async def call_gemini(prompt: str) -> str:
         return text
 
     except httpx.TimeoutException as exc:
-        raise RuntimeError(
-            f"Gemini timed out after {GEMINI_TIMEOUT}s"
-        ) from exc
+        raise RuntimeError(f"Gemini timed out after {GEMINI_TIMEOUT}s") from exc
     except httpx.RequestError as exc:
         raise RuntimeError(f"Gemini network error: {exc}") from exc

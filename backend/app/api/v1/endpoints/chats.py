@@ -1,23 +1,23 @@
 """Chat API endpoints — provider-aware, with streaming support."""
-from fastapi import APIRouter, Depends, HTTPException, Query, Header
-from fastapi.responses import StreamingResponse
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
-from sqlalchemy.orm import selectinload
-from typing import Optional, List
+
 import json
 import logging
+from typing import List, Optional
 
+from app.api.v1.deps import get_current_active_user
+from app.core.config import settings
 from app.db.session import get_db
 from app.models.models import Chat, Message, MessageRole, User
-from app.schemas.schemas import (
-    ChatCreate, ChatUpdate, ChatResponse, ChatListResponse,
-    MessageCreate, MessageResponse, ChatWithMessages,
-    MessageReactionRequest, MessageOut,
-)
-from app.api.v1.deps import get_current_active_user
+from app.schemas.schemas import (ChatCreate, ChatListResponse, ChatResponse,
+                                 ChatUpdate, ChatWithMessages, MessageCreate,
+                                 MessageOut, MessageReactionRequest,
+                                 MessageResponse)
 from app.services.ai.rag_service import rag_service
-from app.core.config import settings
+from fastapi import APIRouter, Depends, Header, HTTPException, Query
+from fastapi.responses import StreamingResponse
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/chats", tags=["Chat"])
@@ -30,6 +30,7 @@ def _resolve_provider(header_value: Optional[str]) -> str:
 
 
 # ─── CRUD ─────────────────────────────────────────────────────────────────────
+
 
 @router.post("", response_model=ChatResponse, status_code=201)
 async def create_chat(
@@ -64,9 +65,15 @@ async def list_chats(
     query = query.order_by(Chat.is_pinned.desc(), Chat.updated_at.desc())
 
     count_q = select(func.count()).select_from(query.subquery())
-    total   = (await db.execute(count_q)).scalar()
-    chats   = (await db.execute(query.offset((page - 1) * page_size).limit(page_size))).scalars().all()
-    return ChatListResponse(chats=list(chats), total=total, page=page, page_size=page_size)
+    total = (await db.execute(count_q)).scalar()
+    chats = (
+        (await db.execute(query.offset((page - 1) * page_size).limit(page_size)))
+        .scalars()
+        .all()
+    )
+    return ChatListResponse(
+        chats=list(chats), total=total, page=page, page_size=page_size
+    )
 
 
 @router.get("/{chat_id}", response_model=ChatWithMessages)
@@ -128,6 +135,7 @@ async def delete_chat(
 
 # ─── Messaging (provider-aware) ───────────────────────────────────────────────
 
+
 @router.post("/{chat_id}/messages", response_model=MessageResponse, status_code=201)
 async def send_message(
     chat_id: str,
@@ -143,7 +151,9 @@ async def send_message(
     """Send a message and receive an AI response from the selected provider."""
     # Resolve provider
     provider = _resolve_provider(x_ai_provider)
-    logger.info("[CHAT] user=%s  provider=%s  chat=%s", current_user.id, provider, chat_id)
+    logger.info(
+        "[CHAT] user=%s  provider=%s  chat=%s", current_user.id, provider, chat_id
+    )
 
     # Verify chat ownership
     result = await db.execute(
@@ -184,6 +194,7 @@ async def send_message(
 
     # Save AI message
     from datetime import datetime, timezone
+
     ai_msg = Message(
         chat_id=chat_id,
         role=MessageRole.ASSISTANT,
@@ -247,10 +258,15 @@ async def stream_message(
 
             # Persist AI message
             from datetime import datetime, timezone
+
             ai_msg = Message(
-                chat_id=chat_id, role=MessageRole.ASSISTANT, content=answer,
-                sources=ai_result.get("sources"), confidence_score=ai_result.get("confidence_score"),
-                tokens_used=ai_result.get("tokens_used"), processing_time_ms=ai_result.get("processing_time_ms"),
+                chat_id=chat_id,
+                role=MessageRole.ASSISTANT,
+                content=answer,
+                sources=ai_result.get("sources"),
+                confidence_score=ai_result.get("confidence_score"),
+                tokens_used=ai_result.get("tokens_used"),
+                processing_time_ms=ai_result.get("processing_time_ms"),
                 model_used=f"{ai_result.get('provider_tag', '')} {ai_result.get('model_used', '')}".strip(),
             )
             db.add(ai_msg)
@@ -272,6 +288,7 @@ async def stream_message(
 
 # ─── Messages helpers ─────────────────────────────────────────────────────────
 
+
 @router.get("/{chat_id}/messages", response_model=List[MessageResponse])
 async def get_messages(
     chat_id: str,
@@ -286,22 +303,30 @@ async def get_messages(
     if not result.scalar_one_or_none():
         raise HTTPException(status_code=404, detail="Chat not found")
     msgs = await db.execute(
-        select(Message).where(Message.chat_id == chat_id)
+        select(Message)
+        .where(Message.chat_id == chat_id)
         .order_by(Message.created_at)
-        .offset((page - 1) * page_size).limit(page_size)
+        .offset((page - 1) * page_size)
+        .limit(page_size)
     )
     return msgs.scalars().all()
 
 
 @router.post("/{chat_id}/messages/{message_id}/reaction", response_model=MessageOut)
 async def react_to_message(
-    chat_id: str, message_id: str, data: MessageReactionRequest,
+    chat_id: str,
+    message_id: str,
+    data: MessageReactionRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ):
     result = await db.execute(
-        select(Message).join(Chat).where(
-            Message.id == message_id, Chat.id == chat_id, Chat.user_id == current_user.id,
+        select(Message)
+        .join(Chat)
+        .where(
+            Message.id == message_id,
+            Chat.id == chat_id,
+            Chat.user_id == current_user.id,
         )
     )
     msg = result.scalar_one_or_none()
@@ -322,7 +347,8 @@ async def export_chat(
     current_user: User = Depends(get_current_active_user),
 ):
     result = await db.execute(
-        select(Chat).where(Chat.id == chat_id, Chat.user_id == current_user.id)
+        select(Chat)
+        .where(Chat.id == chat_id, Chat.user_id == current_user.id)
         .options(selectinload(Chat.messages))
     )
     chat = result.scalar_one_or_none()
@@ -331,33 +357,51 @@ async def export_chat(
 
     if format == "json":
         data = {
-            "chat_id": chat.id, "title": chat.title,
+            "chat_id": chat.id,
+            "title": chat.title,
             "messages": [
-                {"role": m.role.value, "content": m.content,
-                 "model_used": m.model_used, "created_at": m.created_at.isoformat()}
+                {
+                    "role": m.role.value,
+                    "content": m.content,
+                    "model_used": m.model_used,
+                    "created_at": m.created_at.isoformat(),
+                }
                 for m in chat.messages
             ],
         }
         return StreamingResponse(
-            iter([json.dumps(data, indent=2)]), media_type="application/json",
-            headers={"Content-Disposition": f'attachment; filename="chat_{chat_id}.json"'},
+            iter([json.dumps(data, indent=2)]),
+            media_type="application/json",
+            headers={
+                "Content-Disposition": f'attachment; filename="chat_{chat_id}.json"'
+            },
         )
     elif format == "csv":
-        import csv as csv_mod, io
+        import csv as csv_mod
+        import io
+
         output = io.StringIO()
         writer = csv_mod.writer(output)
         writer.writerow(["role", "content", "model_used", "created_at"])
         for m in chat.messages:
-            writer.writerow([m.role.value, m.content, m.model_used or "", m.created_at.isoformat()])
+            writer.writerow(
+                [m.role.value, m.content, m.model_used or "", m.created_at.isoformat()]
+            )
         return StreamingResponse(
-            iter([output.getvalue()]), media_type="text/csv",
-            headers={"Content-Disposition": f'attachment; filename="chat_{chat_id}.csv"'},
+            iter([output.getvalue()]),
+            media_type="text/csv",
+            headers={
+                "Content-Disposition": f'attachment; filename="chat_{chat_id}.csv"'
+            },
         )
     else:
         text_content = "\n\n".join(
             f"[{m.role.value.upper()}] {m.content}" for m in chat.messages
         )
         return StreamingResponse(
-            iter([text_content.encode()]), media_type="text/plain",
-            headers={"Content-Disposition": f'attachment; filename="chat_{chat_id}.txt"'},
+            iter([text_content.encode()]),
+            media_type="text/plain",
+            headers={
+                "Content-Disposition": f'attachment; filename="chat_{chat_id}.txt"'
+            },
         )

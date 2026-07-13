@@ -1,11 +1,13 @@
 """Pydantic schemas for request/response validation."""
+
+import re
 from datetime import datetime
 from typing import Any, List, Optional
-from pydantic import BaseModel, EmailStr, field_validator, model_validator
-import re
 
+from pydantic import BaseModel, EmailStr, field_validator, model_validator
 
 # ─── Base ────────────────────────────────────────────────────────────────────
+
 
 class BaseResponse(BaseModel):
     class Config:
@@ -13,6 +15,7 @@ class BaseResponse(BaseModel):
 
 
 # ─── Auth ────────────────────────────────────────────────────────────────────
+
 
 class RegisterRequest(BaseModel):
     username: str
@@ -24,7 +27,9 @@ class RegisterRequest(BaseModel):
     @classmethod
     def validate_username(cls, v: str) -> str:
         if not re.match(r"^[a-zA-Z0-9_]{3,50}$", v):
-            raise ValueError("Username must be 3-50 chars, alphanumeric and underscore only")
+            raise ValueError(
+                "Username must be 3-50 chars, alphanumeric and underscore only"
+            )
         return v.lower()
 
     @field_validator("password")
@@ -91,6 +96,7 @@ class MFAVerifyRequest(BaseModel):
 
 # ─── User ────────────────────────────────────────────────────────────────────
 
+
 class UserBase(BaseResponse):
     id: str
     username: str
@@ -143,6 +149,7 @@ class AdminUserUpdate(BaseModel):
 
 
 # ─── Chat ────────────────────────────────────────────────────────────────────
+
 
 class ChatCreate(BaseModel):
     title: Optional[str] = "New Chat"
@@ -210,6 +217,7 @@ class MessageReactionRequest(BaseModel):
 
 # ─── Document ────────────────────────────────────────────────────────────────
 
+
 class DocumentResponse(BaseResponse):
     id: str
     user_id: str
@@ -245,6 +253,7 @@ class DocumentListResponse(BaseModel):
 
 # ─── Settings ────────────────────────────────────────────────────────────────
 
+
 class SettingsResponse(BaseResponse):
     theme: str
     language: str
@@ -268,6 +277,7 @@ class SettingsUpdate(BaseModel):
 
 
 # ─── Admin ────────────────────────────────────────────────────────────────────
+
 
 class AdminStatsResponse(BaseModel):
     total_users: int
@@ -308,6 +318,7 @@ class AnalyticsResponse(BaseModel):
 
 # ─── API Keys ────────────────────────────────────────────────────────────────
 
+
 class APIKeyCreate(BaseModel):
     name: str
     permissions: Optional[List[str]] = None
@@ -331,6 +342,7 @@ class APIKeyCreatedResponse(APIKeyResponse):
 
 # ─── Notifications ────────────────────────────────────────────────────────────
 
+
 class NotificationResponse(BaseResponse):
     id: str
     title: str
@@ -342,6 +354,7 @@ class NotificationResponse(BaseResponse):
 
 
 # ─── Generic ─────────────────────────────────────────────────────────────────
+
 
 class MessageOut(BaseModel):
     message: str
@@ -355,14 +368,15 @@ class PaginationParams(BaseModel):
 
 # ─── AI Provider ──────────────────────────────────────────────────────────────
 
+
 class AIProviderHealth(BaseModel):
-    ollama_running:     bool
-    available_models:   List[str]
-    gemini_available:   bool
-    default_provider:   str
+    ollama_running: bool
+    available_models: List[str]
+    gemini_available: bool
+    default_provider: str
 
 
 class AIProviderInfo(BaseModel):
-    provider_used:  str
-    provider_tag:   str
-    model_used:     str
+    provider_used: str
+    provider_tag: str
+    model_used: str

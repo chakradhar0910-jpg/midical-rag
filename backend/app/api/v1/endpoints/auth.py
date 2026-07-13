@@ -1,25 +1,31 @@
 """Authentication API endpoints."""
-from fastapi import APIRouter, Depends, Request, HTTPException, status, BackgroundTasks
-from sqlalchemy.ext.asyncio import AsyncSession
+
+import logging
+
+from app.api.v1.deps import get_current_active_user, get_current_user
+from app.core.config import settings
 from app.db.session import get_db
-from app.schemas.schemas import (
-    RegisterRequest, LoginRequest, TokenResponse, RefreshTokenRequest,
-    PasswordResetRequest, PasswordResetConfirm, VerifyEmailRequest,
-    MFASetupResponse, MFAVerifyRequest, MessageOut, ChangePasswordRequest
-)
+from app.models.models import AuditAction, AuditLog, User
+from app.schemas.schemas import (ChangePasswordRequest, LoginRequest,
+                                 MessageOut, MFASetupResponse,
+                                 MFAVerifyRequest, PasswordResetConfirm,
+                                 PasswordResetRequest, RefreshTokenRequest,
+                                 RegisterRequest, TokenResponse,
+                                 VerifyEmailRequest)
 from app.services.auth.auth_service import AuthService
 from app.services.email_service import EmailService
-from app.api.v1.deps import get_current_user, get_current_active_user
-from app.models.models import User, AuditLog, AuditAction
-from app.core.config import settings
-import logging
+from fastapi import (APIRouter, BackgroundTasks, Depends, HTTPException,
+                     Request, status)
+from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 
 def get_client_info(request: Request):
-    ip = request.headers.get("X-Forwarded-For", request.client.host if request.client else "unknown")
+    ip = request.headers.get(
+        "X-Forwarded-For", request.client.host if request.client else "unknown"
+    )
     ua = request.headers.get("User-Agent", "")
     return ip, ua
 
@@ -43,12 +49,16 @@ async def register(
     )
     db.add(log)
     await db.commit()
-    
+
     # Send verification email in background
     if user.email_verify_token:
-        background_tasks.add_task(EmailService.send_verification_email, user.email, user.email_verify_token)
-        
-    return {"message": "Registration successful. Please check your email to verify your account."}
+        background_tasks.add_task(
+            EmailService.send_verification_email, user.email, user.email_verify_token
+        )
+
+    return {
+        "message": "Registration successful. Please check your email to verify your account."
+    }
 
 
 @router.post("/login", response_model=TokenResponse)
@@ -132,8 +142,12 @@ async def forgot_password(
     """Request password reset email."""
     token = await AuthService.request_password_reset(db, data.email)
     if token:
-        background_tasks.add_task(EmailService.send_password_reset_email, data.email, token)
-    return {"message": "If an account with that email exists, a password reset link has been sent."}
+        background_tasks.add_task(
+            EmailService.send_password_reset_email, data.email, token
+        )
+    return {
+        "message": "If an account with that email exists, a password reset link has been sent."
+    }
 
 
 @router.post("/reset-password", response_model=MessageOut)
@@ -143,7 +157,9 @@ async def reset_password(
 ):
     """Reset password using token."""
     await AuthService.reset_password(db, data.token, data.password)
-    return {"message": "Password reset successfully. Please login with your new password."}
+    return {
+        "message": "Password reset successfully. Please login with your new password."
+    }
 
 
 @router.post("/mfa/setup", response_model=MFASetupResponse)
@@ -186,7 +202,8 @@ async def change_password(
     current_user: User = Depends(get_current_active_user),
 ):
     """Change user password."""
-    from app.core.security import verify_password, get_password_hash
+    from app.core.security import get_password_hash, verify_password
+
     if not verify_password(data.current_password, current_user.password_hash):
         raise HTTPException(status_code=400, detail="Current password is incorrect")
     current_user.password_hash = get_password_hash(data.new_password)

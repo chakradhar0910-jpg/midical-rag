@@ -14,24 +14,24 @@ Response tags (always prefixed to answers):
   [AUTO-LOCAL]  — auto resolved to Ollama
   [AUTO-CLOUD]  — auto resolved to Gemini
 """
+
 import logging
 from dataclasses import dataclass
 from enum import Enum
 from typing import Optional
 
-from app.services.ai.ollama_client import (
-    is_ollama_running, list_models, select_best_model, call_ollama,
-)
-from app.services.ai.gemini_client import call_gemini
 from app.core.config import settings
+from app.services.ai.gemini_client import call_gemini
+from app.services.ai.ollama_client import (call_ollama, is_ollama_running,
+                                           list_models, select_best_model)
 
 logger = logging.getLogger(__name__)
 
 RESPONSE_TAGS = {
-    "ollama":      "[OLLAMA]",
-    "gemini":      "[GEMINI]",
-    "auto-local":  "[AUTO-LOCAL]",
-    "auto-cloud":  "[AUTO-CLOUD]",
+    "ollama": "[OLLAMA]",
+    "gemini": "[GEMINI]",
+    "auto-local": "[AUTO-LOCAL]",
+    "auto-cloud": "[AUTO-CLOUD]",
 }
 
 VALID_PROVIDERS = {"ollama", "gemini", "auto"}
@@ -39,16 +39,16 @@ VALID_PROVIDERS = {"ollama", "gemini", "auto"}
 
 @dataclass
 class ProviderResult:
-    tag:           str    # prefix tag for the response
-    provider_used: str    # "ollama" or "gemini"
-    model_used:    str
-    endpoint:      str
-    text:          str    # raw LLM output (no tag yet)
+    tag: str  # prefix tag for the response
+    provider_used: str  # "ollama" or "gemini"
+    model_used: str
+    endpoint: str
+    text: str  # raw LLM output (no tag yet)
 
 
 async def route_to_provider(
     prompt: str,
-    provider: str,            # value from X-AI-Provider header
+    provider: str,  # value from X-AI-Provider header
 ) -> ProviderResult:
     """
     Route prompt to the correct provider.
@@ -71,7 +71,7 @@ async def route_to_provider(
         logger.info("[INFO] Routing to: Ollama  (strict — no fallback)")
         logger.info("[INFO] Endpoint: %s/api/generate", settings.OLLAMA_BASE_URL)
 
-        text, model = await call_ollama(prompt)   # raises on failure
+        text, model = await call_ollama(prompt)  # raises on failure
 
         logger.info("[INFO] Final provider used: Ollama")
         logger.info("[INFO] Model name used: %s", model)
@@ -93,7 +93,7 @@ async def route_to_provider(
         logger.info("[INFO] Routing to: Gemini  (strict — no fallback)")
         logger.info("[INFO] Endpoint: %s", endpoint)
 
-        text = await call_gemini(prompt)          # raises on failure
+        text = await call_gemini(prompt)  # raises on failure
 
         logger.info("[INFO] Final provider used: Gemini")
         logger.info("[INFO] Model name used: %s", settings.GEMINI_MODEL)
@@ -114,14 +114,16 @@ async def route_to_provider(
 
         if ollama_up:
             models = await list_models()
-            best   = select_best_model(models)
+            best = select_best_model(models)
 
             if best:
                 logger.info(
                     "[INFO] Ollama is available. Best model: %s  →  using AUTO-LOCAL",
                     best,
                 )
-                logger.info("[INFO] Endpoint: %s/api/generate", settings.OLLAMA_BASE_URL)
+                logger.info(
+                    "[INFO] Endpoint: %s/api/generate", settings.OLLAMA_BASE_URL
+                )
 
                 text, model = await call_ollama(prompt, model=best)
 
@@ -155,7 +157,7 @@ async def route_to_provider(
         logger.info("[INFO] Routing to: Gemini (AUTO-CLOUD)")
         logger.info("[INFO] Endpoint: %s", endpoint)
 
-        text = await call_gemini(prompt)          # raises on failure
+        text = await call_gemini(prompt)  # raises on failure
 
         logger.info("[INFO] Final provider used: Gemini (AUTO-CLOUD)")
         logger.info("[INFO] Model name used: %s", settings.GEMINI_MODEL)

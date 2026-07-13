@@ -1,14 +1,16 @@
 """FastAPI dependency injection utilities."""
-from typing import Optional
-from fastapi import Depends, HTTPException, status, Security
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
-from app.db.session import get_db
-from app.models.models import User, UserStatus, UserRole
-from app.core.security import decode_token, RolePermissions
-from jose import JWTError
+
 import logging
+from typing import Optional
+
+from app.core.security import RolePermissions, decode_token
+from app.db.session import get_db
+from app.models.models import User, UserRole, UserStatus
+from fastapi import Depends, HTTPException, Security, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from jose import JWTError
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 security = HTTPBearer()
@@ -41,7 +43,9 @@ async def get_current_user(
     return user
 
 
-async def get_current_active_user(current_user: User = Depends(get_current_user)) -> User:
+async def get_current_active_user(
+    current_user: User = Depends(get_current_user),
+) -> User:
     """Ensure user is active."""
     if current_user.status == UserStatus.SUSPENDED:
         raise HTTPException(status_code=403, detail="Account suspended")
@@ -52,25 +56,33 @@ async def get_current_active_user(current_user: User = Depends(get_current_user)
 
 def require_role(*roles: str):
     """Role-based access control decorator factory."""
-    async def role_checker(current_user: User = Depends(get_current_active_user)) -> User:
+
+    async def role_checker(
+        current_user: User = Depends(get_current_active_user),
+    ) -> User:
         if current_user.role.value not in roles:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=f"Insufficient permissions. Required roles: {', '.join(roles)}",
             )
         return current_user
+
     return role_checker
 
 
 def require_permission(permission: str):
     """Permission-based access control decorator factory."""
-    async def permission_checker(current_user: User = Depends(get_current_active_user)) -> User:
+
+    async def permission_checker(
+        current_user: User = Depends(get_current_active_user),
+    ) -> User:
         if not RolePermissions.has_permission(current_user.role.value, permission):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=f"Insufficient permissions. Required: {permission}",
             )
         return current_user
+
     return permission_checker
 
 

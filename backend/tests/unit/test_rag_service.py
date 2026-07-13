@@ -1,7 +1,9 @@
 """Unit tests for RAG service - medical safety features."""
-import pytest
+
 from unittest.mock import AsyncMock, MagicMock, patch
-from app.services.ai.rag_service import MedicalRAGService, EMERGENCY_PATTERNS
+
+import pytest
+from app.services.ai.rag_service import EMERGENCY_PATTERNS, MedicalRAGService
 
 
 class TestEmergencyDetection:
@@ -59,11 +61,24 @@ class TestUnsafeContentDetection:
         self.svc = MedicalRAGService()
 
     def test_detects_unsafe_dosage_advice(self):
-        assert self.svc.detect_unsafe_content("take 5 times the dose for faster results") is True
+        assert (
+            self.svc.detect_unsafe_content("take 5 times the dose for faster results")
+            is True
+        )
 
     def test_safe_medical_content(self):
-        assert self.svc.detect_unsafe_content("consult your doctor before changing medications") is False
-        assert self.svc.detect_unsafe_content("metformin is typically prescribed at 500mg twice daily") is False
+        assert (
+            self.svc.detect_unsafe_content(
+                "consult your doctor before changing medications"
+            )
+            is False
+        )
+        assert (
+            self.svc.detect_unsafe_content(
+                "metformin is typically prescribed at 500mg twice daily"
+            )
+            is False
+        )
 
 
 class TestTextExtraction:
@@ -109,7 +124,9 @@ class TestChunkingBehavior:
 
     def test_chunks_have_overlap(self):
         """Verify chunk overlap helps context continuity."""
-        long_text = " ".join([f"sentence{i} about medical topic{i}" for i in range(100)])
+        long_text = " ".join(
+            [f"sentence{i} about medical topic{i}" for i in range(100)]
+        )
         chunks = self.svc.text_splitter.split_text(long_text)
         if len(chunks) > 1:
             # Second chunk should contain some words from first chunk (overlap)

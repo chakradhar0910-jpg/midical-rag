@@ -1,18 +1,21 @@
 """FastAPI application entry point."""
+
+import logging
+import logging.config
+import time
+from contextlib import asynccontextmanager
+
+from app.api.v1.endpoints import (admin, ai_provider, auth, chats, documents,
+                                  users)
+from app.core.config import settings
+from app.db.session import init_db
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
-from contextlib import asynccontextmanager
-from prometheus_client import generate_latest, CONTENT_TYPE_LATEST, Counter, Histogram
+from prometheus_client import (CONTENT_TYPE_LATEST, Counter, Histogram,
+                               generate_latest)
 from starlette.responses import Response
-import time
-import logging
-import logging.config
-
-from app.core.config import settings
-from app.db.session import init_db
-from app.api.v1.endpoints import auth, chats, documents, users, admin, ai_provider
 
 # Configure logging
 logging.basicConfig(
@@ -22,8 +25,12 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Prometheus metrics
-REQUEST_COUNT = Counter("http_requests_total", "Total HTTP requests", ["method", "endpoint", "status"])
-REQUEST_LATENCY = Histogram("http_request_duration_seconds", "Request latency", ["endpoint"])
+REQUEST_COUNT = Counter(
+    "http_requests_total", "Total HTTP requests", ["method", "endpoint", "status"]
+)
+REQUEST_LATENCY = Histogram(
+    "http_request_duration_seconds", "Request latency", ["endpoint"]
+)
 
 
 @asynccontextmanager
@@ -39,15 +46,18 @@ async def lifespan(app: FastAPI):
 
 async def seed_initial_data():
     """Seed admin user and test users."""
-    from app.db.session import AsyncSessionLocal
-    from app.models.models import User, UserRole, UserStatus, UserSettings
-    from app.core.security import get_password_hash
-    from sqlalchemy import select
     import uuid
+
+    from app.core.security import get_password_hash
+    from app.db.session import AsyncSessionLocal
+    from app.models.models import User, UserRole, UserSettings, UserStatus
+    from sqlalchemy import select
 
     async with AsyncSessionLocal() as db:
         # Create admin
-        result = await db.execute(select(User).where(User.email == settings.ADMIN_EMAIL))
+        result = await db.execute(
+            select(User).where(User.email == settings.ADMIN_EMAIL)
+        )
         if not result.scalar_one_or_none():
             admin = User(
                 username=settings.ADMIN_USERNAME,
@@ -65,7 +75,12 @@ async def seed_initial_data():
 
             # Create test users
             test_users = [
-                ("doctor1", "doctor1@medicalrag.com", UserRole.DOCTOR, "Dr. John Smith"),
+                (
+                    "doctor1",
+                    "doctor1@medicalrag.com",
+                    UserRole.DOCTOR,
+                    "Dr. John Smith",
+                ),
                 ("doctor2", "doctor2@medicalrag.com", UserRole.DOCTOR, "Dr. Jane Doe"),
                 ("user1", "user1@medicalrag.com", UserRole.USER, "Alice Johnson"),
                 ("user2", "user2@medicalrag.com", UserRole.USER, "Bob Wilson"),

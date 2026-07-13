@@ -1,15 +1,17 @@
 """User profile and settings API endpoints."""
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
-from app.db.session import get_db
-from app.models.models import User, UserSettings, Notification, AuditLog, AuditAction
-from app.schemas.schemas import (
-    UserBase, UserUpdateRequest, SettingsResponse, SettingsUpdate, MessageOut,
-    NotificationResponse
-)
-from app.api.v1.deps import get_current_active_user
+
 from typing import List
+
+from app.api.v1.deps import get_current_active_user
+from app.db.session import get_db
+from app.models.models import (AuditAction, AuditLog, Notification, User,
+                               UserSettings)
+from app.schemas.schemas import (MessageOut, NotificationResponse,
+                                 SettingsResponse, SettingsUpdate, UserBase,
+                                 UserUpdateRequest)
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix="/users", tags=["Users"])
 
@@ -46,7 +48,9 @@ async def get_settings(
     current_user: User = Depends(get_current_active_user),
 ):
     """Get user settings."""
-    result = await db.execute(select(UserSettings).where(UserSettings.user_id == current_user.id))
+    result = await db.execute(
+        select(UserSettings).where(UserSettings.user_id == current_user.id)
+    )
     s = result.scalar_one_or_none()
     if not s:
         s = UserSettings(user_id=current_user.id)
@@ -63,7 +67,9 @@ async def update_settings(
     current_user: User = Depends(get_current_active_user),
 ):
     """Update user settings."""
-    result = await db.execute(select(UserSettings).where(UserSettings.user_id == current_user.id))
+    result = await db.execute(
+        select(UserSettings).where(UserSettings.user_id == current_user.id)
+    )
     s = result.scalar_one_or_none()
     if not s:
         s = UserSettings(user_id=current_user.id)
@@ -122,6 +128,7 @@ async def mark_all_read(
 ):
     """Mark all notifications as read."""
     from sqlalchemy import update
+
     await db.execute(
         update(Notification)
         .where(Notification.user_id == current_user.id, Notification.is_read == False)

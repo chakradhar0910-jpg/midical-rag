@@ -1,19 +1,23 @@
 """Document management API endpoints."""
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Query, BackgroundTasks
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
-from typing import Optional, List
-from pathlib import Path
-import aiofiles
-import os
-import logging
 
-from app.db.session import get_db
-from app.models.models import Document, DocumentStatus, User, AuditLog, AuditAction
-from app.schemas.schemas import DocumentResponse, DocumentUpdate, DocumentListResponse, MessageOut
+import logging
+import os
+from pathlib import Path
+from typing import List, Optional
+
+import aiofiles
 from app.api.v1.deps import get_current_active_user
-from app.services.ai.rag_service import rag_service
 from app.core.config import settings
+from app.db.session import get_db
+from app.models.models import (AuditAction, AuditLog, Document, DocumentStatus,
+                               User)
+from app.schemas.schemas import (DocumentListResponse, DocumentResponse,
+                                 DocumentUpdate, MessageOut)
+from app.services.ai.rag_service import rag_service
+from fastapi import (APIRouter, BackgroundTasks, Depends, File, Form,
+                     HTTPException, Query, UploadFile)
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/documents", tags=["Documents"])
@@ -22,18 +26,24 @@ UPLOAD_DIR = Path("/app/uploads")
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 
-async def process_document_background(document_id: str, file_path: str, file_type: str, title: str):
+async def process_document_background(
+    document_id: str, file_path: str, file_type: str, title: str
+):
     """Background task to process document."""
     from app.db.session import AsyncSessionLocal
+
     async with AsyncSessionLocal() as db:
         try:
-            result = await db.execute(select(Document).where(Document.id == document_id))
+            result = await db.execute(
+                select(Document).where(Document.id == document_id)
+            )
             doc = result.scalar_one_or_none()
             if not doc:
                 return
 
             doc.status = DocumentStatus.PROCESSING
             from datetime import datetime, timezone
+
             doc.processing_started_at = datetime.now(timezone.utc)
             await db.commit()
 
@@ -57,7 +67,9 @@ async def process_document_background(document_id: str, file_path: str, file_typ
         except Exception as e:
             logger.error(f"Document processing error {document_id}: {e}")
             async with AsyncSessionLocal() as db2:
-                result = await db2.execute(select(Document).where(Document.id == document_id))
+                result = await db2.execute(
+                    select(Document).where(Document.id == document_id)
+                )
                 doc = result.scalar_one_or_none()
                 if doc:
                     doc.status = DocumentStatus.FAILED
@@ -80,16 +92,23 @@ async def upload_document(
     # Validate file type
     file_ext = file.filename.split(".")[-1].lower() if "." in file.filename else ""
     if file_ext not in settings.allowed_extensions_list:
-        raise HTTPException(status_code=400, detail=f"File type not allowed. Allowed: {settings.ALLOWED_EXTENSIONS}")
+        raise HTTPException(
+            status_code=400,
+            detail=f"File type not allowed. Allowed: {settings.ALLOWED_EXTENSIONS}",
+        )
 
     # Validate file size
     content = await file.read()
     size_mb = len(content) / (1024 * 1024)
     if size_mb > settings.MAX_UPLOAD_SIZE_MB:
-        raise HTTPException(status_code=413, detail=f"File too large. Max: {settings.MAX_UPLOAD_SIZE_MB}MB")
+        raise HTTPException(
+            status_code=413,
+            detail=f"File too large. Max: {settings.MAX_UPLOAD_SIZE_MB}MB",
+        )
 
     # Save file
     import uuid
+
     doc_id = str(uuid.uuid4())
     file_path = UPLOAD_DIR / f"{doc_id}.{file_ext}"
     async with aiofiles.open(file_path, "wb") as f:
@@ -123,7 +142,9 @@ async def upload_document(
     await db.refresh(doc)
 
     # Process in background
-    background_tasks.add_task(process_document_background, doc_id, str(file_path), file_ext, doc_title)
+    background_tasks.add_task(
+        process_document_background, doc_id, str(file_path), file_ext, doc_title
+    )
     return doc
 
 
@@ -149,8 +170,14 @@ async def list_documents(
 
     count_q = select(func.count()).select_from(query.subquery())
     total = (await db.execute(count_q)).scalar()
-    docs = (await db.execute(query.offset((page - 1) * page_size).limit(page_size))).scalars().all()
-    return DocumentListResponse(documents=list(docs), total=total, page=page, page_size=page_size)
+    docs = (
+        (await db.execute(query.offset((page - 1) * page_size).limit(page_size)))
+        .scalars()
+        .all()
+    )
+    return DocumentListResponse(
+        documents=list(docs), total=total, page=page, page_size=page_size
+    )
 
 
 @router.get("/{doc_id}", response_model=DocumentResponse)
@@ -161,7 +188,9 @@ async def get_document(
 ):
     """Get document details."""
     result = await db.execute(
-        select(Document).where(Document.id == doc_id, Document.user_id == current_user.id)
+        select(Document).where(
+            Document.id == doc_id, Document.user_id == current_user.id
+        )
     )
     doc = result.scalar_one_or_none()
     if not doc:
@@ -178,7 +207,9 @@ async def update_document(
 ):
     """Update document metadata."""
     result = await db.execute(
-        select(Document).where(Document.id == doc_id, Document.user_id == current_user.id)
+        select(Document).where(
+            Document.id == doc_id, Document.user_id == current_user.id
+        )
     )
     doc = result.scalar_one_or_none()
     if not doc:
@@ -199,7 +230,9 @@ async def delete_document(
 ):
     """Delete a document and its vectors."""
     result = await db.execute(
-        select(Document).where(Document.id == doc_id, Document.user_id == current_user.id)
+        select(Document).where(
+            Document.id == doc_id, Document.user_id == current_user.id
+        )
     )
     doc = result.scalar_one_or_none()
     if not doc:
@@ -237,7 +270,9 @@ async def reprocess_document(
 ):
     """Re-process a failed or pending document."""
     result = await db.execute(
-        select(Document).where(Document.id == doc_id, Document.user_id == current_user.id)
+        select(Document).where(
+            Document.id == doc_id, Document.user_id == current_user.id
+        )
     )
     doc = result.scalar_one_or_none()
     if not doc:

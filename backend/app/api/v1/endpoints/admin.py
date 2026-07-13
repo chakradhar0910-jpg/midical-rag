@@ -1,17 +1,20 @@
 """Admin API endpoints for user management, analytics, and logs."""
-from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, distinct
-from typing import Optional, List
-from datetime import datetime, timezone, timedelta
-from app.db.session import get_db
-from app.models.models import User, UserStatus, Chat, Message, Document, AuditLog, Analytics
-from app.schemas.schemas import (
-    UserBase, UserSummary, AdminUserUpdate, AuditLogResponse,
-    AdminStatsResponse, AnalyticsResponse, AnalyticsDataPoint, MessageOut
-)
-from app.api.v1.deps import require_admin
+
 import logging
+from datetime import datetime, timedelta, timezone
+from typing import List, Optional
+
+from app.api.v1.deps import require_admin
+from app.db.session import get_db
+from app.models.models import (Analytics, AuditLog, Chat, Document, Message,
+                               User, UserStatus)
+from app.schemas.schemas import (AdminStatsResponse, AdminUserUpdate,
+                                 AnalyticsDataPoint, AnalyticsResponse,
+                                 AuditLogResponse, MessageOut, UserBase,
+                                 UserSummary)
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import distinct, func, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/admin", tags=["Admin"])
@@ -23,30 +26,38 @@ async def get_stats(
     current_user: User = Depends(require_admin),
 ):
     """Get platform-wide statistics."""
-    today = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    today = datetime.now(timezone.utc).replace(
+        hour=0, minute=0, second=0, microsecond=0
+    )
 
     total_users = (await db.execute(select(func.count(User.id)))).scalar() or 0
-    active_users = (await db.execute(
-        select(func.count(User.id)).where(User.status == UserStatus.ACTIVE)
-    )).scalar() or 0
-    new_users_today = (await db.execute(
-        select(func.count(User.id)).where(User.created_at >= today)
-    )).scalar() or 0
+    active_users = (
+        await db.execute(
+            select(func.count(User.id)).where(User.status == UserStatus.ACTIVE)
+        )
+    ).scalar() or 0
+    new_users_today = (
+        await db.execute(select(func.count(User.id)).where(User.created_at >= today))
+    ).scalar() or 0
     total_chats = (await db.execute(select(func.count(Chat.id)))).scalar() or 0
     total_messages = (await db.execute(select(func.count(Message.id)))).scalar() or 0
     total_docs = (await db.execute(select(func.count(Document.id)))).scalar() or 0
-    processed_docs = (await db.execute(
-        select(func.count(Document.id)).where(Document.status == "processed")
-    )).scalar() or 0
-    ai_today = (await db.execute(
-        select(func.count(Message.id)).where(
-            Message.role == "assistant",
-            Message.created_at >= today,
+    processed_docs = (
+        await db.execute(
+            select(func.count(Document.id)).where(Document.status == "processed")
         )
-    )).scalar() or 0
-    total_tokens = (await db.execute(
-        select(func.coalesce(func.sum(Message.tokens_used), 0))
-    )).scalar() or 0
+    ).scalar() or 0
+    ai_today = (
+        await db.execute(
+            select(func.count(Message.id)).where(
+                Message.role == "assistant",
+                Message.created_at >= today,
+            )
+        )
+    ).scalar() or 0
+    total_tokens = (
+        await db.execute(select(func.coalesce(func.sum(Message.tokens_used), 0)))
+    ).scalar() or 0
 
     return AdminStatsResponse(
         total_users=total_users,
@@ -85,7 +96,11 @@ async def list_users(
 
     count_q = select(func.count()).select_from(query.subquery())
     total = (await db.execute(count_q)).scalar()
-    users = (await db.execute(query.offset((page - 1) * page_size).limit(page_size))).scalars().all()
+    users = (
+        (await db.execute(query.offset((page - 1) * page_size).limit(page_size)))
+        .scalars()
+        .all()
+    )
 
     return {
         "users": [UserSummary.model_validate(u) for u in users],
@@ -188,7 +203,11 @@ async def get_audit_logs(
 
     count_q = select(func.count()).select_from(query.subquery())
     total = (await db.execute(count_q)).scalar()
-    logs = (await db.execute(query.offset((page - 1) * page_size).limit(page_size))).scalars().all()
+    logs = (
+        (await db.execute(query.offset((page - 1) * page_size).limit(page_size)))
+        .scalars()
+        .all()
+    )
 
     # Enrich with usernames
     log_data = []
@@ -204,7 +223,9 @@ async def get_audit_logs(
             "created_at": log.created_at.isoformat(),
         }
         if log.user_id:
-            user_result = await db.execute(select(User.username).where(User.id == log.user_id))
+            user_result = await db.execute(
+                select(User.username).where(User.id == log.user_id)
+            )
             username = user_result.scalar_one_or_none()
             log_dict["username"] = username
         log_data.append(log_dict)
@@ -261,7 +282,9 @@ async def chats_analytics(
     rows = result.all()
     data = [AnalyticsDataPoint(date=row.date, value=float(row.count)) for row in rows]
     total = sum(d.value for d in data)
-    return AnalyticsResponse(metric="ai_responses", data=data, total=total, change_percent=0.0)
+    return AnalyticsResponse(
+        metric="ai_responses", data=data, total=total, change_percent=0.0
+    )
 
 
 @router.get("/documents", response_model=dict)
@@ -275,5 +298,14 @@ async def list_all_documents(
     query = select(Document).order_by(Document.created_at.desc())
     count_q = select(func.count()).select_from(query.subquery())
     total = (await db.execute(count_q)).scalar()
-    docs = (await db.execute(query.offset((page - 1) * page_size).limit(page_size))).scalars().all()
-    return {"documents": list(docs), "total": total, "page": page, "page_size": page_size}
+    docs = (
+        (await db.execute(query.offset((page - 1) * page_size).limit(page_size)))
+        .scalars()
+        .all()
+    )
+    return {
+        "documents": list(docs),
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+    }

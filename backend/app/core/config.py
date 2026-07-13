@@ -1,7 +1,9 @@
 """Application configuration settings."""
-from typing import List
-from pydantic_settings import BaseSettings
+
 import secrets
+from typing import List
+
+from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
@@ -29,7 +31,9 @@ class Settings(BaseSettings):
         return [o.strip() for o in self.CORS_ORIGINS.split(",")]
 
     # Database
-    DATABASE_URL: str = "postgresql+asyncpg://medrag:medrag_pass@postgres:5432/medicalrag"
+    DATABASE_URL: str = (
+        "postgresql+asyncpg://medrag:medrag_pass@postgres:5432/medicalrag"
+    )
     DATABASE_POOL_SIZE: int = 20
     DATABASE_MAX_OVERFLOW: int = 40
 
@@ -45,7 +49,7 @@ class Settings(BaseSettings):
     # ── AI Provider Routing ───────────────────────────────────────────────────
     # Default provider: "ollama" | "gemini" | "auto"
     DEFAULT_AI_PROVIDER: str = "auto"
-    
+
     # Embedding Provider: "openai" | "gemini" | "ollama"
     EMBEDDING_PROVIDER: str = "openai"
 
@@ -61,7 +65,7 @@ class Settings(BaseSettings):
     # Ollama (local LLM)
     OLLAMA_BASE_URL: str = "http://127.0.0.1:11434"
     OLLAMA_TIMEOUT_SECONDS: float = 120.0
-    OLLAMA_DEFAULT_MODEL: str = ""   # empty = auto-discover
+    OLLAMA_DEFAULT_MODEL: str = ""  # empty = auto-discover
     OLLAMA_EMBEDDING_MODEL: str = "nomic-embed-text"
 
     # Email

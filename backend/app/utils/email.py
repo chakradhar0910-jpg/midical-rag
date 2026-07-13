@@ -1,8 +1,10 @@
 """Email sending utility (SMTP)."""
-import smtplib
+
 import logging
-from email.mime.text import MIMEText
+import smtplib
 from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -34,7 +36,9 @@ async def send_email(to_email: str, subject: str, html_body: str) -> bool:
         return False
 
 
-def build_verification_email(username: str, token: str, base_url: str = "http://localhost:3000") -> str:
+def build_verification_email(
+    username: str, token: str, base_url: str = "http://localhost:3000"
+) -> str:
     verify_url = f"{base_url}/auth/verify?token={token}"
     return f"""
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -56,7 +60,9 @@ def build_verification_email(username: str, token: str, base_url: str = "http://
     """
 
 
-def build_password_reset_email(username: str, token: str, base_url: str = "http://localhost:3000") -> str:
+def build_password_reset_email(
+    username: str, token: str, base_url: str = "http://localhost:3000"
+) -> str:
     reset_url = f"{base_url}/auth/reset-password?token={token}"
     return f"""
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">

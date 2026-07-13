@@ -1,7 +1,9 @@
 import logging
+
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
+
 
 class EmailService:
     @staticmethod
@@ -11,10 +13,12 @@ class EmailService:
         In a production environment, this should connect to an SMTP server.
         For development, if SMTP is not configured, we print to console.
         """
-        verify_url = f"{settings.CORS_ORIGINS.split(',')[0]}/auth/verify-email?token={token}"
+        verify_url = (
+            f"{settings.CORS_ORIGINS.split(',')[0]}/auth/verify-email?token={token}"
+        )
         subject = "Verify your MedicalRAG Account"
         body = f"Welcome to MedicalRAG!\n\nPlease verify your email by clicking the link below:\n{verify_url}"
-        
+
         await EmailService._send_email(email, subject, body)
 
     @staticmethod
@@ -22,16 +26,18 @@ class EmailService:
         """
         Sends a password reset link to the user.
         """
-        reset_url = f"{settings.CORS_ORIGINS.split(',')[0]}/auth/reset-password?token={token}"
+        reset_url = (
+            f"{settings.CORS_ORIGINS.split(',')[0]}/auth/reset-password?token={token}"
+        )
         subject = "Reset your MedicalRAG Password"
         body = f"You requested a password reset.\n\nPlease reset your password by clicking the link below:\n{reset_url}\n\nIf you did not request this, please ignore this email."
-        
+
         await EmailService._send_email(email, subject, body)
 
     @staticmethod
     async def _send_email(to_email: str, subject: str, body: str) -> None:
         """
-        Core function to send an email. 
+        Core function to send an email.
         Logs to console if SMTP_USER is not configured.
         """
         if not settings.SMTP_USER:
@@ -45,8 +51,9 @@ class EmailService:
 
         # Production mode: Actual SMTP logic would go here
         try:
-            import aiosmtplib
             from email.message import EmailMessage
+
+            import aiosmtplib
 
             message = EmailMessage()
             message["From"] = settings.EMAIL_FROM

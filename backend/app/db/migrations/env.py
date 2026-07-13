@@ -1,9 +1,11 @@
 """Alembic environment configuration."""
-from logging.config import fileConfig
-from sqlalchemy import engine_from_config, pool
-from alembic import context
+
 import os
 import sys
+from logging.config import fileConfig
+
+from alembic import context
+from sqlalchemy import engine_from_config, pool
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
@@ -19,9 +21,10 @@ target_metadata = Base.metadata
 
 # Override sqlalchemy.url from environment
 database_url = os.getenv(
-    "DATABASE_URL",
-    "postgresql://medrag:medrag_pass@localhost:5432/medicalrag"
-).replace("+asyncpg", "")  # Use sync driver for migrations
+    "DATABASE_URL", "postgresql://medrag:medrag_pass@localhost:5432/medicalrag"
+).replace(
+    "+asyncpg", ""
+)  # Use sync driver for migrations
 config.set_main_option("sqlalchemy.url", database_url)
 
 

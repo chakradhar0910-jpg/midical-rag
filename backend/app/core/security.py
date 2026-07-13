@@ -1,16 +1,20 @@
 """Security utilities for JWT, password hashing, and RBAC."""
+
+import logging
+import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional, Union
+
+import pyotp
+from app.core.config import settings
 from jose import JWTError, jwt
 from passlib.context import CryptContext
-from app.core.config import settings
-import pyotp
-import secrets
-import logging
 
 logger = logging.getLogger(__name__)
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto", bcrypt__rounds=settings.BCRYPT_ROUNDS)
+pwd_context = CryptContext(
+    schemes=["bcrypt"], deprecated="auto", bcrypt__rounds=settings.BCRYPT_ROUNDS
+)
 
 
 class TokenType:
@@ -40,9 +44,13 @@ def create_token(
     if expires_delta:
         expire = datetime.now(timezone.utc) + expires_delta
     elif token_type == TokenType.ACCESS:
-        expire = datetime.now(timezone.utc) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+        expire = datetime.now(timezone.utc) + timedelta(
+            minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
+        )
     elif token_type == TokenType.REFRESH:
-        expire = datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+        expire = datetime.now(timezone.utc) + timedelta(
+            days=settings.REFRESH_TOKEN_EXPIRE_DAYS
+        )
     elif token_type in (TokenType.RESET, TokenType.VERIFY):
         expire = datetime.now(timezone.utc) + timedelta(hours=24)
     else:
@@ -75,7 +83,9 @@ def create_refresh_token(subject: Union[str, Any]) -> str:
 def decode_token(token: str) -> dict:
     """Decode and validate a JWT token."""
     try:
-        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        payload = jwt.decode(
+            token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
+        )
         return payload
     except JWTError as e:
         logger.warning(f"Token decode error: {e}")
@@ -109,20 +119,33 @@ class RolePermissions:
 
     PERMISSIONS = {
         "admin": [
-            "users:read", "users:write", "users:delete",
-            "documents:read", "documents:write", "documents:delete",
-            "chats:read", "chats:write", "chats:delete",
-            "analytics:read", "logs:read", "settings:read", "settings:write",
-            "api_keys:read", "api_keys:write",
+            "users:read",
+            "users:write",
+            "users:delete",
+            "documents:read",
+            "documents:write",
+            "documents:delete",
+            "chats:read",
+            "chats:write",
+            "chats:delete",
+            "analytics:read",
+            "logs:read",
+            "settings:read",
+            "settings:write",
+            "api_keys:read",
+            "api_keys:write",
         ],
         "doctor": [
-            "documents:read", "documents:write",
-            "chats:read", "chats:write",
+            "documents:read",
+            "documents:write",
+            "chats:read",
+            "chats:write",
             "analytics:read",
         ],
         "user": [
             "documents:read",
-            "chats:read", "chats:write",
+            "chats:read",
+            "chats:write",
         ],
         "viewer": [
             "documents:read",

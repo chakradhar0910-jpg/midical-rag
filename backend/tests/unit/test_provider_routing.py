@@ -7,13 +7,13 @@ These tests verify the core contract:
   - Unknown provider values raise ValueError
   - Response tags match the resolved provider
 """
-import pytest
+
 from unittest.mock import AsyncMock, patch
 
-from app.services.ai.provider_selector import (
-    route_to_provider, VALID_PROVIDERS, RESPONSE_TAGS,
-)
-from app.services.ai.ollama_client import select_best_model, MODEL_PRIORITY
+import pytest
+from app.services.ai.ollama_client import MODEL_PRIORITY, select_best_model
+from app.services.ai.provider_selector import (RESPONSE_TAGS, VALID_PROVIDERS,
+                                               route_to_provider)
 
 
 class TestValidProviders:

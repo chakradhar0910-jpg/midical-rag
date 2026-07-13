@@ -1,12 +1,13 @@
 """Unit tests for authentication service."""
-import pytest
+
+from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
-from datetime import datetime, timezone, timedelta
-from app.core.security import (
-    get_password_hash, verify_password, create_access_token,
-    create_refresh_token, decode_token, generate_secure_token,
-    generate_totp_secret, verify_totp, RolePermissions
-)
+
+import pytest
+from app.core.security import (RolePermissions, create_access_token,
+                               create_refresh_token, decode_token,
+                               generate_secure_token, generate_totp_secret,
+                               get_password_hash, verify_password, verify_totp)
 
 
 class TestPasswordHashing:
@@ -66,13 +67,19 @@ class TestJWTTokens:
 
     def test_invalid_token_raises_exception(self):
         from jose import JWTError
+
         with pytest.raises(Exception):
             decode_token("invalid.token.here")
 
     def test_expired_token_raises_exception(self):
-        from jose import jwt
         from app.core.config import settings
-        payload = {"sub": "user-123", "type": "access", "exp": datetime.now(timezone.utc) - timedelta(hours=1)}
+        from jose import jwt
+
+        payload = {
+            "sub": "user-123",
+            "type": "access",
+            "exp": datetime.now(timezone.utc) - timedelta(hours=1),
+        }
         token = jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
         with pytest.raises(Exception):
             decode_token(token)
@@ -86,6 +93,7 @@ class TestMFA:
 
     def test_verify_valid_totp(self):
         import pyotp
+
         secret = generate_totp_secret()
         totp = pyotp.TOTP(secret)
         current_token = totp.now()
@@ -140,6 +148,7 @@ class TestPasswordValidation:
 
     def test_valid_strong_password(self):
         from app.schemas.schemas import RegisterRequest
+
         data = RegisterRequest(
             username="testuser",
             email="test@example.com",
@@ -149,18 +158,26 @@ class TestPasswordValidation:
 
     def test_weak_password_no_uppercase(self):
         from pydantic import ValidationError
+
         with pytest.raises(ValidationError):
             from app.schemas.schemas import RegisterRequest
+
             RegisterRequest(username="u", email="e@e.com", password="weakpass@123")
 
     def test_weak_password_too_short(self):
         from pydantic import ValidationError
+
         with pytest.raises(ValidationError):
             from app.schemas.schemas import RegisterRequest
+
             RegisterRequest(username="u", email="e@e.com", password="Sh@1")
 
     def test_invalid_username_special_chars(self):
         from pydantic import ValidationError
+
         with pytest.raises(ValidationError):
             from app.schemas.schemas import RegisterRequest
-            RegisterRequest(username="user name!", email="e@e.com", password="Valid@Pass1")
+
+            RegisterRequest(
+                username="user name!", email="e@e.com", password="Valid@Pass1"
+            )

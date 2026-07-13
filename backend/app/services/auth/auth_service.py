@@ -1,19 +1,21 @@
 """Authentication service handling login, register, tokens, MFA."""
-from datetime import datetime, timezone, timedelta
-from typing import Optional, Tuple
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update
-from fastapi import HTTPException, status
-import logging
 
-from app.models.models import User, Session, UserSettings, UserStatus, UserRole, Notification
-from app.schemas.schemas import RegisterRequest, LoginRequest
-from app.core.security import (
-    verify_password, get_password_hash, create_access_token,
-    create_refresh_token, decode_token, generate_secure_token,
-    generate_totp_secret, verify_totp, get_totp_uri, TokenType
-)
+import logging
+from datetime import datetime, timedelta, timezone
+from typing import Optional, Tuple
+
 from app.core.config import settings
+from app.core.security import (TokenType, create_access_token,
+                               create_refresh_token, decode_token,
+                               generate_secure_token, generate_totp_secret,
+                               get_password_hash, get_totp_uri,
+                               verify_password, verify_totp)
+from app.models.models import (Notification, Session, User, UserRole,
+                               UserSettings, UserStatus)
+from app.schemas.schemas import LoginRequest, RegisterRequest
+from fastapi import HTTPException, status
+from sqlalchemy import select, update
+from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 
@@ -33,12 +35,16 @@ class AuthService:
     async def register(db: AsyncSession, data: RegisterRequest) -> User:
         """Register a new user."""
         # Check username uniqueness
-        existing = await db.execute(select(User).where(User.username == data.username.lower()))
+        existing = await db.execute(
+            select(User).where(User.username == data.username.lower())
+        )
         if existing.scalar_one_or_none():
             raise HTTPException(status_code=400, detail="Username already taken")
 
         # Check email uniqueness
-        existing = await db.execute(select(User).where(User.email == data.email.lower()))
+        existing = await db.execute(
+            select(User).where(User.email == data.email.lower())
+        )
         if existing.scalar_one_or_none():
             raise HTTPException(status_code=400, detail="Email already registered")
 
@@ -85,26 +91,38 @@ class AuthService:
 
         # Check lockout
         if user.locked_until and _aware(user.locked_until) > datetime.now(timezone.utc):
-            raise HTTPException(status_code=423, detail=f"Account locked. Try again after {user.locked_until.isoformat()}")
+            raise HTTPException(
+                status_code=423,
+                detail=f"Account locked. Try again after {user.locked_until.isoformat()}",
+            )
 
         # Verify password
         if not verify_password(data.password, user.password_hash):
             user.failed_login_attempts = (user.failed_login_attempts or 0) + 1
             if user.failed_login_attempts >= settings.MAX_LOGIN_ATTEMPTS:
-                user.locked_until = datetime.now(timezone.utc) + timedelta(minutes=settings.LOCKOUT_DURATION_MINUTES)
+                user.locked_until = datetime.now(timezone.utc) + timedelta(
+                    minutes=settings.LOCKOUT_DURATION_MINUTES
+                )
                 await db.commit()
-                raise HTTPException(status_code=423, detail="Account locked due to too many failed attempts")
+                raise HTTPException(
+                    status_code=423,
+                    detail="Account locked due to too many failed attempts",
+                )
             await db.commit()
             raise HTTPException(status_code=401, detail="Invalid email or password")
 
         if user.status == UserStatus.SUSPENDED:
-            raise HTTPException(status_code=403, detail="Account suspended. Contact support.")
+            raise HTTPException(
+                status_code=403, detail="Account suspended. Contact support."
+            )
 
         if user.status == UserStatus.INACTIVE:
             raise HTTPException(status_code=403, detail="Account inactive.")
 
         if user.status == UserStatus.PENDING:
-            raise HTTPException(status_code=403, detail="Please verify your email before logging in.")
+            raise HTTPException(
+                status_code=403, detail="Please verify your email before logging in."
+            )
 
         # MFA verification
         if user.is_mfa_enabled:
@@ -127,7 +145,8 @@ class AuthService:
             refresh_token=refresh_token,
             ip_address=ip_address,
             user_agent=user_agent,
-            expires_at=datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS),
+            expires_at=datetime.now(timezone.utc)
+            + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS),
         )
         db.add(session)
         await db.commit()
@@ -145,7 +164,9 @@ class AuthService:
             raise HTTPException(status_code=401, detail="Invalid refresh token")
 
         result = await db.execute(
-            select(Session).where(Session.refresh_token == refresh_token, Session.is_active == True)
+            select(Session).where(
+                Session.refresh_token == refresh_token, Session.is_active == True
+            )
         )
         session = result.scalar_one_or_none()
         if not session or _aware(session.expires_at) < datetime.now(timezone.utc):
@@ -168,7 +189,9 @@ class AuthService:
     @staticmethod
     async def logout(db: AsyncSession, refresh_token: str) -> None:
         """Invalidate user session."""
-        result = await db.execute(select(Session).where(Session.refresh_token == refresh_token))
+        result = await db.execute(
+            select(Session).where(Session.refresh_token == refresh_token)
+        )
         session = result.scalar_one_or_none()
         if session:
             session.is_active = False

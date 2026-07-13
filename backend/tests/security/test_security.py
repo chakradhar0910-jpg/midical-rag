@@ -1,14 +1,18 @@
 """Security tests - OWASP Top 10 coverage."""
+
 import pytest
 import pytest_asyncio
-from httpx import AsyncClient, ASGITransport
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
+from app.db.session import Base, get_db
 from app.main import app
-from app.db.session import get_db, Base
+from httpx import ASGITransport, AsyncClient
+from sqlalchemy.ext.asyncio import (AsyncSession, async_sessionmaker,
+                                    create_async_engine)
 
 TEST_DATABASE_URL = "sqlite+aiosqlite:///./test_security.db"
 engine = create_async_engine(TEST_DATABASE_URL, echo=False)
-TestingSessionLocal = async_sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)
+TestingSessionLocal = async_sessionmaker(
+    bind=engine, class_=AsyncSession, expire_on_commit=False
+)
 
 
 async def override_get_db():
@@ -34,7 +38,9 @@ async def setup_db():
 
 @pytest_asyncio.fixture
 async def client():
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as ac:
         yield ac
 
 
@@ -70,35 +76,50 @@ class TestAuthenticationSecurity:
         ]
         for route in protected_routes:
             response = await client.get(route)
-            assert response.status_code in [401, 403], f"Route {route} should be protected"
+            assert response.status_code in [
+                401,
+                403,
+            ], f"Route {route} should be protected"
 
     async def test_admin_routes_require_admin_role(self, client: AsyncClient):
         """Test admin endpoints are not accessible to regular users."""
         # Register and verify a regular user
-        await client.post("/api/v1/auth/register", json={
-            "username": "regularuser",
-            "email": "regular@test.com",
-            "password": "RegularPass@123"
-        })
+        await client.post(
+            "/api/v1/auth/register",
+            json={
+                "username": "regularuser",
+                "email": "regular@test.com",
+                "password": "RegularPass@123",
+            },
+        )
         async with TestingSessionLocal() as db:
-            from sqlalchemy import update
             from app.models.models import User, UserStatus
+            from sqlalchemy import update
+
             await db.execute(
-                update(User).where(User.email == "regular@test.com")
+                update(User)
+                .where(User.email == "regular@test.com")
                 .values(status=UserStatus.ACTIVE, is_email_verified=True)
             )
             await db.commit()
 
-        login = await client.post("/api/v1/auth/login", json={
-            "email": "regular@test.com", "password": "RegularPass@123"
-        })
+        login = await client.post(
+            "/api/v1/auth/login",
+            json={"email": "regular@test.com", "password": "RegularPass@123"},
+        )
         token = login.json().get("access_token", "")
         headers = {"Authorization": f"Bearer {token}"}
 
-        admin_routes = ["/api/v1/admin/stats", "/api/v1/admin/users", "/api/v1/admin/logs"]
+        admin_routes = [
+            "/api/v1/admin/stats",
+            "/api/v1/admin/users",
+            "/api/v1/admin/logs",
+        ]
         for route in admin_routes:
             response = await client.get(route, headers=headers)
-            assert response.status_code == 403, f"Admin route {route} accessible to regular user"
+            assert (
+                response.status_code == 403
+            ), f"Admin route {route} accessible to regular user"
 
     async def test_invalid_jwt_rejected(self, client: AsyncClient):
         """A07: Identification and Authentication Failures."""
@@ -108,8 +129,13 @@ class TestAuthenticationSecurity:
             "Bearer " + "a" * 100,
         ]
         for token in fake_tokens:
-            response = await client.get("/api/v1/users/me", headers={"Authorization": token})
-            assert response.status_code in [401, 403], f"Token should be rejected: {token[:30]}..."
+            response = await client.get(
+                "/api/v1/users/me", headers={"Authorization": token}
+            )
+            assert response.status_code in [
+                401,
+                403,
+            ], f"Token should be rejected: {token[:30]}..."
 
 
 class TestInputValidation:
@@ -124,7 +150,10 @@ class TestInputValidation:
         ]
         for payload in injection_payloads:
             response = await client.post("/api/v1/auth/login", json=payload)
-            assert response.status_code in [401, 422], "SQL injection should be handled safely"
+            assert response.status_code in [
+                401,
+                422,
+            ], "SQL injection should be handled safely"
 
     async def test_xss_in_registration(self, client: AsyncClient):
         """Test XSS payloads are handled safely."""
@@ -134,12 +163,15 @@ class TestInputValidation:
             "<img src=x onerror=alert(1)>",
         ]
         for payload in xss_payloads:
-            response = await client.post("/api/v1/auth/register", json={
-                "username": "normal",
-                "email": "test@example.com",
-                "password": "ValidPass@123",
-                "full_name": payload
-            })
+            response = await client.post(
+                "/api/v1/auth/register",
+                json={
+                    "username": "normal",
+                    "email": "test@example.com",
+                    "password": "ValidPass@123",
+                    "full_name": payload,
+                },
+            )
             # Should either succeed (storing escaped) or fail validation
             assert response.status_code in [201, 400, 422]
             if response.status_code == 201:
@@ -148,11 +180,14 @@ class TestInputValidation:
 
     async def test_oversized_input_rejected(self, client: AsyncClient):
         """Test that oversized inputs are handled."""
-        response = await client.post("/api/v1/auth/register", json={
-            "username": "a" * 1000,
-            "email": "valid@example.com",
-            "password": "ValidPass@123"
-        })
+        response = await client.post(
+            "/api/v1/auth/register",
+            json={
+                "username": "a" * 1000,
+                "email": "valid@example.com",
+                "password": "ValidPass@123",
+            },
+        )
         assert response.status_code == 422
 
 
@@ -162,32 +197,37 @@ class TestRateLimiting:
     async def test_brute_force_protection(self, client: AsyncClient):
         """Test account lockout after multiple failed logins."""
         # Register and activate user
-        await client.post("/api/v1/auth/register", json={
-            "username": "brute_target",
-            "email": "brute@test.com",
-            "password": "RealPass@123"
-        })
+        await client.post(
+            "/api/v1/auth/register",
+            json={
+                "username": "brute_target",
+                "email": "brute@test.com",
+                "password": "RealPass@123",
+            },
+        )
         async with TestingSessionLocal() as db:
-            from sqlalchemy import update
             from app.models.models import User, UserStatus
+            from sqlalchemy import update
+
             await db.execute(
-                update(User).where(User.email == "brute@test.com")
+                update(User)
+                .where(User.email == "brute@test.com")
                 .values(status=UserStatus.ACTIVE, is_email_verified=True)
             )
             await db.commit()
 
         # Attempt multiple wrong logins
         for i in range(6):
-            resp = await client.post("/api/v1/auth/login", json={
-                "email": "brute@test.com",
-                "password": "WrongPass@123"
-            })
+            resp = await client.post(
+                "/api/v1/auth/login",
+                json={"email": "brute@test.com", "password": "WrongPass@123"},
+            )
 
         # After max attempts, account should be locked
-        final_resp = await client.post("/api/v1/auth/login", json={
-            "email": "brute@test.com",
-            "password": "WrongPass@123"
-        })
+        final_resp = await client.post(
+            "/api/v1/auth/login",
+            json={"email": "brute@test.com", "password": "WrongPass@123"},
+        )
         assert final_resp.status_code in [423, 401]
 
 
@@ -196,24 +236,29 @@ class TestPasswordSecurity:
 
     async def test_password_not_returned_in_response(self, client: AsyncClient):
         """Ensure passwords are never returned in API responses."""
-        await client.post("/api/v1/auth/register", json={
-            "username": "pwdtest",
-            "email": "pwdtest@example.com",
-            "password": "MySecret@123"
-        })
+        await client.post(
+            "/api/v1/auth/register",
+            json={
+                "username": "pwdtest",
+                "email": "pwdtest@example.com",
+                "password": "MySecret@123",
+            },
+        )
         async with TestingSessionLocal() as db:
-            from sqlalchemy import update
             from app.models.models import User, UserStatus
+            from sqlalchemy import update
+
             await db.execute(
-                update(User).where(User.email == "pwdtest@example.com")
+                update(User)
+                .where(User.email == "pwdtest@example.com")
                 .values(status=UserStatus.ACTIVE, is_email_verified=True)
             )
             await db.commit()
 
-        login_resp = await client.post("/api/v1/auth/login", json={
-            "email": "pwdtest@example.com",
-            "password": "MySecret@123"
-        })
+        login_resp = await client.post(
+            "/api/v1/auth/login",
+            json={"email": "pwdtest@example.com", "password": "MySecret@123"},
+        )
         token = login_resp.json().get("access_token", "")
         headers = {"Authorization": f"Bearer {token}"}
 
