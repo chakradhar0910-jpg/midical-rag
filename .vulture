@@ -1,0 +1,14 @@
+# Vulture configuration file for dead code detection
+[vulture]
+exclude =
+    .git,
+    __pycache__,
+    .venv,
+    venv,
+    env,
+    node_modules,
+    frontend,
+    tests
+paths = backend/app
+min_confidence = 80
+sort_by_size = true
