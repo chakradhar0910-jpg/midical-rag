@@ -337,4 +337,4 @@ MIT License — see [LICENSE](LICENSE) for details.
 
 ---
 
-*Built with ❤️ for healthcare innovation*
+*Built with ❤️ for healthcare. innovation*
